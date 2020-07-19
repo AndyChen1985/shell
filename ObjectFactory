@@ -12,31 +12,53 @@
 #include <QHash>
 
 
-class ObjectFactory
+class ControllerFactory
 {
 public:
     template<typename T>
-    static void registerClass()
+    static void registerController()
     {
-        constructors().insert( T::staticMetaObject.className(), &constructorHelper<T> );
+        QString className{T::staticMetaObject.className()};
+        constructors().insert(className.replace("_Controller",""), &constructorHelper<T>);
     }
 
-    static QObject* createObject( const QString& className)
+    static QObject* createController( const QString& className)
     {
         Constructor constructor = constructors().value( className );
         if ( constructor == NULL )
             return NULL;
-        return (*constructor)();
+        return (*constructor)(className);
     }
 
 
+    static void callControllerAction(QString controllerName, const char* actionName){
+        QObject* object = ControllerFactory::createController( controllerName );
+
+
+
+//        testController->print();
+        QString result;
+        QMetaObject::invokeMethod(object, "print");
+    }
+
 private:
-    typedef QObject* (*Constructor)();
+    typedef QObject* (*Constructor)(QString);
+
+
 
     template<typename T>
-    static QObject* constructorHelper()
+    static QObject* constructorHelper(QString controllerName)
     {
-        return new T();
+        static QHash<QString, QObject*> name_controller_hash;
+        auto controller =name_controller_hash.value(controllerName);
+        if(controller != NULL){
+            return  controller;
+        } else{
+            cout << "entry this branch" << endl;
+            controller = new T();
+            name_controller_hash.insert(controllerName, controller);
+            return  controller;
+        }
     }
 
     static QHash<QString, Constructor>& constructors()
